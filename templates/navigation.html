@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Navigation - RouteX AI</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://maps.gomaps.pro/maps/api/js?key=AlzaSyf2bnJ5ETvcpfjdnit7a3l7uj7Eq6XRPMc&libraries=places,geometry"></script>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --accent-color: #3498db;
+            --warning-color: #e67e22;
+            --danger-color: #e74c3c;
+            --success-color: #2ecc71;
+        }
+        
+        body {
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            min-height: 100vh;
+            color: white;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+
+        .navigation-container {
+            padding: 2rem;
+            min-height: 100vh;
+        }
+
+        .navigation-dashboard {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 2.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .route-form {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .form-control {
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            border-radius: 12px;
+            padding: 0.8rem 1rem 0.8rem 2.5rem;
+            color: var(--primary-color);
+        }
+
+        .form-control:focus {
+            background: white;
+            box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25);
+        }
+
+        .input-icon {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--primary-color);
+        }
+
+        #map {
+            height: 500px;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-bottom: 1.5rem;
+        }
+
+        .info-card {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            transition: transform 0.3s ease;
+        }
+
+        .info-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .direction-step {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 1rem;
+            border-radius: 10px;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+        }
+
+        .direction-step i {
+            margin-right: 1rem;
+            font-size: 1.2rem;
+        }
+
+        .weather-info {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .weather-icon {
+            width: 50px;
+            height: 50px;
+            margin-right: 1rem;
+        }
+
+        .pulse {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--success-color);
+            margin-right: 0.5rem;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.5); opacity: 0.5; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .control-btn {
+            background: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .control-btn:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+            color: white;
+        }
+
+        .navigation-controls {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 1rem;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+    </style>
+</head>
+<body>
+    <div class="container navigation-container">
+        <div class="navigation-dashboard">
+            <div class="row mb-4">
+                <div class="col-12">
+                    <h1 class="display-4 mb-3">
+                        <span class="pulse"></span>
+                        Live Navigation
+                    </h1>
+                    <p class="lead">Real-time route guidance with safety alerts</p>
+                </div>
+            </div>
+
+            <!-- Route Input Form -->
+            <div id="routeInputForm" class="row mb-4">
+                <div class="col-md-8 mx-auto">
+                    <div class="info-card">
+                        <h4 class="mb-3">Enter Route Details</h4>
+                        <form id="navigationForm" class="needs-validation" novalidate>
+                            <div class="mb-3 position-relative">
+                                <label for="source" class="form-label">Starting Point</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-transparent border-0">
+                                        <i class="fas fa-map-marker-alt text-primary"></i>
+                                    </span>
+                                    <input type="text" class="form-control bg-light" id="source" name="source" required 
+                                           placeholder="Enter your starting location">
+                                </div>
+                            </div>
+                            <div class="mb-3 position-relative">
+                                <label for="destination" class="form-label">Destination</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-transparent border-0">
+                                        <i class="fas fa-flag-checkered text-danger"></i>
+                                    </span>
+                                    <input type="text" class="form-control bg-light" id="destination" name="destination" required 
+                                           placeholder="Enter your destination">
+                                </div>
+                            </div>
+                            <button type="submit" class="btn control-btn w-100">
+                                <i class="fas fa-route me-2"></i>
+                                Start Navigation
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navigation Content (Initially Hidden) -->
+            <div id="navigationContent" class="row" style="display: none;">
+                <div class="col-md-8">
+                    <div id="map"></div>
+                    <!-- Navigation Controls -->
+                    <div class="navigation-controls mt-3">
+                        <button id="startNavigation" class="btn control-btn">
+                            <i class="fas fa-play"></i>
+                            Start Navigation
+                        </button>
+                        <button id="pauseNavigation" class="btn control-btn" style="display: none;">
+                            <i class="fas fa-pause"></i>
+                            Pause
+                        </button>
+                        <button id="endNavigation" class="btn control-btn" style="background: var(--danger-color);">
+                            <i class="fas fa-stop"></i>
+                            End Navigation
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="info-card">
+                        <h4 class="mb-3">Route Information</h4>
+                        <div class="mb-3">
+                            <p><i class="fas fa-map-marker-alt me-2"></i><strong>From:</strong> <span id="sourceLocation"></span></p>
+                            <p><i class="fas fa-flag-checkered me-2"></i><strong>To:</strong> <span id="destLocation"></span></p>
+                        </div>
+                        <div class="d-flex justify-content-between mb-3">
+                            <div>
+                                <p class="mb-1"><i class="fas fa-road me-2"></i>Distance</p>
+                                <h5 id="totalDistance">0 km</h5>
+                            </div>
+                            <div>
+                                <p class="mb-1"><i class="fas fa-clock me-2"></i>ETA</p>
+                                <h5 id="eta">0 min</h5>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="info-card">
+                        <h4 class="mb-3">Weather Conditions</h4>
+                        <div id="currentWeather" class="weather-info">
+                            <!-- Weather info will be populated here -->
+                        </div>
+                    </div>
+
+                    <div id="alertsContainer">
+                        <!-- Safety alerts will be populated here -->
+                    </div>
+                </div>
+
+                <div class="col-12 mt-4">
+                    <div class="info-card">
+                        <h4 class="mb-3">Turn-by-Turn Directions</h4>
+                        <div id="directionsPanel">
+                            <!-- Directions steps will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let map;
+        let directionsService;
+        let directionsRenderer;
+        let currentLocationMarker;
+        let watchId;
+        let isNavigating = false;
+
+        // Initialize the map and navigation services
+        function initMap() {
+            directionsService = new google.maps.DirectionsService();
+            directionsRenderer = new google.maps.DirectionsRenderer({
+                suppressMarkers: true,
+                polylineOptions: {
+                    strokeColor: "#3498db",
+                    strokeWeight: 6
+                }
+            });
+
+            map = new google.maps.Map(document.getElementById("map"), {
+                zoom: 14,
+                center: { lat: 0, lng: 0 },
+                styles: [
+                    {
+                        featureType: "all",
+                        elementType: "labels.text.fill",
+                        stylers: [{ color: "#2c3e50" }]
+                    }
+                ]
+            });
+
+            directionsRenderer.setMap(map);
+        }
+
+        $(document).ready(function() {
+            initMap();
+
+            // Handle form submission
+            $('#navigationForm').on('submit', function(e) {
+                e.preventDefault();
+                const source = $('#source').val();
+                const destination = $('#destination').val();
+
+                if (source && destination) {
+                    calculateAndDisplayRoute(source, destination);
+                    $('#routeInputForm').hide();
+                    $('#navigationContent').show();
+                    $('#sourceLocation').text(source);
+                    $('#destLocation').text(destination);
+                }
+            });
+
+            // Initialize navigation controls
+            setupNavigationControls();
+        });
+
+        function calculateAndDisplayRoute(source, destination) {
+            const request = {
+                origin: source,
+                destination: destination,
+                travelMode: google.maps.TravelMode.DRIVING
+            };
+
+            directionsService.route(request, function(response, status) {
+                if (status === 'OK') {
+                    directionsRenderer.setDirections(response);
+                    updateRouteInfo(response);
+                    fetchWeatherAndSafetyInfo(response.routes[0].legs[0]);
+                }
+            });
+        }
+
+        function updateRouteInfo(response) {
+            const route = response.routes[0].legs[0];
+            $('#totalDistance').text(route.distance.text);
+            $('#eta').text(route.duration.text);
+
+            // Update directions panel
+            const steps = route.steps;
+            let directionsHtml = '';
+            steps.forEach((step, index) => {
+                directionsHtml += `
+                    <div class="direction-step">
+                        <i class="fas fa-arrow-right"></i>
+                        <span>${step.instructions}</span>
+                    </div>
+                `;
+            });
+            $('#directionsPanel').html(directionsHtml);
+        }
+
+        function fetchWeatherAndSafetyInfo(routeLeg) {
+            // Simulated weather update
+            const weatherHtml = `
+                <img src="https://openweathermap.org/img/wn/02d@2x.png" class="weather-icon">
+                <div>
+                    <h5 class="mb-1">Partly Cloudy</h5>
+                    <p class="mb-0">25°C, Wind: 5 km/h</p>
+                </div>
+            `;
+            $('#currentWeather').html(weatherHtml);
+
+            // Simulated safety alerts
+            const alerts = [
+                { type: 'warning', message: 'Heavy traffic ahead' },
+                { type: 'danger', message: 'Road work in progress' }
+            ];
+            
+            let alertsHtml = '';
+            alerts.forEach(alert => {
+                alertsHtml += `
+                    <div class="alert-card mb-2">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        ${alert.message}
+                    </div>
+                `;
+            });
+            $('#alertsContainer').html(alertsHtml);
+        }
+
+        function setupNavigationControls() {
+            $('#startNavigation').click(function() {
+                if (!isNavigating) {
+                    startRealTimeNavigation();
+                    $(this).hide();
+                    $('#pauseNavigation').show();
+                }
+            });
+
+            $('#pauseNavigation').click(function() {
+                if (isNavigating) {
+                    pauseNavigation();
+                    $(this).hide();
+                    $('#startNavigation').show();
+                }
+            });
+
+            $('#endNavigation').click(function() {
+                endNavigation();
+                window.location.href = '/';
+            });
+        }
+
+        function startRealTimeNavigation() {
+            isNavigating = true;
+            if (navigator.geolocation) {
+                watchId = navigator.geolocation.watchPosition(
+                    updateCurrentLocation,
+                    handleLocationError,
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 5000,
+                        maximumAge: 0
+                    }
+                );
+            }
+        }
+
+        function updateCurrentLocation(position) {
+            const currentPos = {
+                lat: position.coords.latitude,
+                lng: position.coords.longitude
+            };
+
+            if (!currentLocationMarker) {
+                currentLocationMarker = new google.maps.Marker({
+                    position: currentPos,
+                    map: map,
+                    icon: {
+                        path: google.maps.SymbolPath.CIRCLE,
+                        scale: 8,
+                        fillColor: "#3498db",
+                        fillOpacity: 1,
+                        strokeColor: "#ffffff",
+                        strokeWeight: 2
+                    }
+                });
+            } else {
+                currentLocationMarker.setPosition(currentPos);
+            }
+
+            map.panTo(currentPos);
+        }
+
+        function pauseNavigation() {
+            isNavigating = false;
+            if (watchId) {
+                navigator.geolocation.clearWatch(watchId);
+            }
+        }
+
+        function endNavigation() {
+            pauseNavigation();
+            if (currentLocationMarker) {
+                currentLocationMarker.setMap(null);
+            }
+        }
+
+        function handleLocationError(error) {
+            console.error('Error getting location:', error);
+            alert('Unable to get your current location. Please check your GPS settings.');
+            pauseNavigation();
+            $('#pauseNavigation').hide();
+            $('#startNavigation').show();
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Road Feedback Reports - RouteX AI</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #2c3e50, #3498db);
+            min-height: 100vh;
+            color: white;
+            padding: 2rem 0;
+        }
+        .feedback-container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 2.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        .feedback-card {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .feedback-image {
+            max-width: 300px;
+            border-radius: 10px;
+            margin-top: 1rem;
+        }
+        .severity-badge {
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.8em;
+            margin-left: 1rem;
+        }
+        .severity-low { background-color: #2ecc71; }
+        .severity-medium { background-color: #f1c40f; }
+        .severity-high { background-color: #e67e22; }
+        .severity-critical { background-color: #e74c3c; }
+        .status-badge {
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.8em;
+            margin-left: 1rem;
+            background: rgba(255, 255, 255, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div class="feedback-container">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h2>
+                            <i class="fas fa-clipboard-list me-2"></i>
+                            Road Condition Reports
+                        </h2>
+                        <a href="{{ url_for('index') }}" class="btn btn-outline-light">
+                            <i class="fas fa-home me-2"></i>
+                            Back to Home
+                        </a>
+                    </div>
+
+                    {% if feedbacks %}
+                        {% for feedback in feedbacks %}
+                            <div class="feedback-card">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <h4>
+                                        {{ feedback.condition.title() }}
+                                        <span class="severity-badge severity-{{ feedback.severity }}">
+                                            {{ feedback.severity.title() }}
+                                        </span>
+                                        <span class="status-badge">
+                                            {{ feedback.status.title() }}
+                                        </span>
+                                    </h4>
+                                    <small class="text-light">
+                                        {{ feedback.created_at.strftime('%Y-%m-%d %H:%M') }}
+                                    </small>
+                                </div>
+                                
+                                <p class="mb-2">
+                                    <i class="fas fa-map-marker-alt me-2"></i>
+                                    {{ feedback.location }}
+                                    <small class="ms-2">
+                                        ({{ feedback.latitude }}, {{ feedback.longitude }})
+                                    </small>
+                                </p>
+                                
+                                <p class="mb-3">{{ feedback.description }}</p>
+                                
+                                {% if feedback.image_path %}
+                                    <img src="{{ url_for('uploaded_file', filename=feedback.image_path) }}" 
+                                         alt="Road condition image" 
+                                         class="feedback-image">
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-inbox fa-3x mb-3"></i>
+                            <h4>No feedback reports yet</h4>
+                            <p>Be the first to report a road condition!</p>
+                            <a href="{{ url_for('feedback') }}" class="btn btn-outline-light mt-3">
+                                <i class="fas fa-plus me-2"></i>
+                                Submit Feedback
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

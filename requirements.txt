@@ -1,0 +1,9 @@
+Flask>=2.0.1
+Flask-SQLAlchemy>=2.5.1
+Werkzeug>=2.0.1
+SQLAlchemy>=1.4.23
+Pillow>=9.0.0  # for image processing
+requests>=2.26.0
+pandas>=1.3.3
+lime>=0.2.0.1
+scikit-learn>=1.0.2  # required for LIME

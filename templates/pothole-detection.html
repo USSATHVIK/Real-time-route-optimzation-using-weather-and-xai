@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pothole Detection - RouteX AI</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --accent-color: #3498db;
+            --warning-color: #e67e22;
+            --danger-color: #e74c3c;
+            --success-color: #2ecc71;
+        }
+        
+        body {
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            min-height: 100vh;
+            color: white;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+
+        .detection-container {
+            padding: 2rem;
+        }
+
+        .detection-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 2rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .camera-container {
+            position: relative;
+            width: 100%;
+            max-width: 640px;
+            margin: 0 auto;
+            overflow: hidden;
+            border-radius: 15px;
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        #cameraFeed, #capturedImage {
+            width: 100%;
+            border-radius: 15px;
+        }
+
+        .capture-btn {
+            background: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+            margin: 1rem 0;
+        }
+
+        .capture-btn:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+        }
+
+        .result-container {
+            margin-top: 2rem;
+            padding: 1.5rem;
+            border-radius: 15px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .result-positive {
+            border-left: 4px solid var(--danger-color);
+        }
+
+        .result-negative {
+            border-left: 4px solid var(--success-color);
+        }
+
+        .loading-spinner {
+            display: none;
+            margin: 1rem auto;
+        }
+
+        .preview-container {
+            max-width: 300px;
+            margin: 1rem auto;
+            position: relative;
+        }
+
+        .preview-container img {
+            width: 100%;
+            border-radius: 10px;
+        }
+
+        .detection-box {
+            position: absolute;
+            border: 2px solid var(--danger-color);
+            background: rgba(231, 76, 60, 0.3);
+            pointer-events: none;
+        }
+
+        .file-upload {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px dashed rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .file-upload:hover {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <div class="container detection-container">
+        <div class="detection-card">
+            <h1 class="text-center mb-4">
+                <i class="fas fa-camera me-2"></i>
+                Pothole Detection
+            </h1>
+            
+            <div class="row">
+                <div class="col-md-6 mx-auto">
+                    <div class="camera-container mb-4">
+                        <video id="cameraFeed" autoplay playsinline style="display: none;"></video>
+                        <canvas id="capturedImage" style="display: none;"></canvas>
+                        <div id="fileUpload" class="file-upload">
+                            <i class="fas fa-cloud-upload-alt fa-3x mb-3"></i>
+                            <h4>Upload Road Image</h4>
+                            <p class="text-muted">or click to take a photo</p>
+                            <input type="file" id="imageInput" accept="image/*" capture="environment" style="display: none;">
+                        </div>
+                    </div>
+
+                    <div class="text-center">
+                        <button id="captureBtn" class="capture-btn">
+                            <i class="fas fa-camera me-2"></i>
+                            Take Photo
+                        </button>
+                        <button id="detectBtn" class="capture-btn" style="display: none;">
+                            <i class="fas fa-search me-2"></i>
+                            Detect Potholes
+                        </button>
+                    </div>
+
+                    <div class="loading-spinner text-center">
+                        <div class="spinner-border text-light" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">Analyzing image...</p>
+                    </div>
+
+                    <div id="resultContainer" class="result-container" style="display: none;">
+                        <h4 class="mb-3">Detection Results</h4>
+                        <div id="resultContent"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        let stream = null;
+        let isUsingCamera = false;
+
+        // Handle file upload and camera capture
+        document.getElementById('fileUpload').addEventListener('click', function() {
+            document.getElementById('imageInput').click();
+        });
+
+        document.getElementById('imageInput').addEventListener('change', function(e) {
+            if (e.target.files && e.target.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const canvas = document.getElementById('capturedImage');
+                    const ctx = canvas.getContext('2d');
+                    const img = new Image();
+                    
+                    img.onload = function() {
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        ctx.drawImage(img, 0, 0);
+                        
+                        document.getElementById('fileUpload').style.display = 'none';
+                        canvas.style.display = 'block';
+                        document.getElementById('detectBtn').style.display = 'inline-block';
+                        document.getElementById('captureBtn').style.display = 'none';
+                    }
+                    img.src = e.target.result;
+                }
+                reader.readAsDataURL(e.target.files[0]);
+            }
+        });
+
+        // Handle camera capture
+        document.getElementById('captureBtn').addEventListener('click', async function() {
+            if (!isUsingCamera) {
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia({ 
+                        video: { 
+                            facingMode: 'environment',
+                            width: { ideal: 1920 },
+                            height: { ideal: 1080 }
+                        } 
+                    });
+                    const video = document.getElementById('cameraFeed');
+                    video.srcObject = stream;
+                    document.getElementById('fileUpload').style.display = 'none';
+                    video.style.display = 'block';
+                    this.innerHTML = '<i class="fas fa-camera me-2"></i>Capture';
+                    isUsingCamera = true;
+                } catch (err) {
+                    console.error('Error accessing camera:', err);
+                    alert('Unable to access camera. Please check permissions or try uploading an image instead.');
+                }
+            } else {
+                const video = document.getElementById('cameraFeed');
+                const canvas = document.getElementById('capturedImage');
+                const ctx = canvas.getContext('2d');
+
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                ctx.drawImage(video, 0, 0);
+
+                // Stop camera stream
+                stream.getTracks().forEach(track => track.stop());
+                video.style.display = 'none';
+                canvas.style.display = 'block';
+                this.style.display = 'none';
+                document.getElementById('detectBtn').style.display = 'inline-block';
+                isUsingCamera = false;
+            }
+        });
+
+        // Handle pothole detection
+        document.getElementById('detectBtn').addEventListener('click', async function() {
+            const canvas = document.getElementById('capturedImage');
+            const loadingSpinner = document.querySelector('.loading-spinner');
+            const resultContainer = document.getElementById('resultContainer');
+            const resultContent = document.getElementById('resultContent');
+
+            // Show loading spinner
+            loadingSpinner.style.display = 'block';
+            this.disabled = true;
+
+            try {
+                // Convert canvas to blob
+                const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg'));
+                const formData = new FormData();
+                formData.append('image', blob, 'road.jpg');
+
+                // Send to backend
+                const response = await fetch('/detect-potholes', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                // Display results
+                resultContainer.style.display = 'block';
+                if (result.potholes_detected) {
+                    resultContainer.classList.add('result-positive');
+                    resultContent.innerHTML = `
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <strong>Potholes Detected!</strong>
+                            <p class="mb-0">Number of potholes: ${result.pothole_count}</p>
+                        </div>
+                    `;
+                } else {
+                    resultContainer.classList.add('result-negative');
+                    resultContent.innerHTML = `
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle me-2"></i>
+                            <strong>No Potholes Detected</strong>
+                            <p class="mb-0">The road appears to be in good condition.</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                resultContainer.style.display = 'block';
+                resultContent.innerHTML = `
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-circle me-2"></i>
+                        <strong>Error</strong>
+                        <p class="mb-0">Unable to process image. Please try again.</p>
+                    </div>
+                `;
+            } finally {
+                loadingSpinner.style.display = 'none';
+                this.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

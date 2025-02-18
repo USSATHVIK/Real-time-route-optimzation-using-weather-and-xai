@@ -1,0 +1,1237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Safe Route Planner</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --accent-color: #3498db;
+            --warning-color: #e67e22;
+            --danger-color: #e74c3c;
+            --success-color: #2ecc71;
+        }
+        
+        body {
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            min-height: 100vh;
+            color: white;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+
+        .dashboard-container {
+            padding: 2rem;
+            min-height: 100vh;
+        }
+
+        .analyzer-dashboard {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 2.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .route-form {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .form-control {
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            border-radius: 12px;
+            padding: 0.8rem 1rem 0.8rem 2.5rem;
+            color: var(--primary-color);
+        }
+
+        .form-control:focus {
+            background: white;
+            box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25);
+        }
+
+        .input-icon {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--primary-color);
+        }
+
+        .submit-btn {
+            background: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 1rem;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+
+        .submit-btn:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+        }
+
+        .result-card {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            transition: transform 0.3s ease;
+        }
+
+        .result-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .loading-pulse {
+            animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        #map {
+            border-radius: 15px;
+            overflow: hidden;
+            margin-bottom: 1.5rem;
+        }
+
+        .weather-info-card {
+            background: linear-gradient(135deg, rgba(52, 152, 219, 0.9), rgba(41, 128, 185, 0.9));
+            border-radius: 15px;
+            padding: 20px;
+            color: white;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .weather-info-card .weather-header {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+        }
+
+        .weather-info-card .weather-header h4 {
+            margin: 0;
+            font-size: 1.4rem;
+            display: flex;
+            align-items: center;
+        }
+
+        .weather-info-card .condition-text {
+            font-size: 1rem;
+            opacity: 0.9;
+            margin-left: 10px;
+            font-weight: normal;
+        }
+
+        .weather-info-card .update-time {
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.7);
+            display: block;
+            margin-top: 5px;
+        }
+
+        .weather-info-card .weather-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .weather-info-card .detail-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            transition: background 0.3s ease;
+        }
+
+        .weather-info-card .detail-item:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .weather-info-card .detail-item i {
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .weather-info-card .value {
+            font-weight: bold;
+            color: rgba(255, 255, 255, 0.95);
+        }
+
+        .weather-info-card .weather-advice {
+            margin-top: 15px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 8px;
+            font-size: 0.95rem;
+            line-height: 1.4;
+        }
+
+        .weather-info-card .weather-advice i {
+            color: #f1c40f;
+        }
+
+        .safety-score {
+            font-size: 2.5rem;
+            font-weight: bold;
+            padding: 20px;
+            border-radius: 50%;
+            width: 120px;
+            height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto;
+            color: white;
+        }
+        .feature-importance {
+            height: 200px;
+            margin: 20px 0;
+        }
+        .weather-icon {
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+        }
+        .map-container {
+            height: 400px;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .progress {
+            height: 20px;
+            margin-bottom: 10px;
+            border-radius: 10px;
+        }
+        .feature-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+        }
+        .weather-risk {
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-top: 10px;
+            background-color: #f8f9fa;
+            border-left: 4px solid;
+        }
+        .route-details {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+        }
+        .detail-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #dee2e6;
+        }
+        .detail-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+        
+        .shap-plot {
+            margin: 20px 0;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 15px;
+        }
+        
+        .feature-bar {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+            padding: 5px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+        }
+        
+        .feature-label {
+            width: 150px;
+            text-align: right;
+            padding-right: 10px;
+            font-weight: bold;
+        }
+        
+        .feature-bar-inner {
+            height: 20px;
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+        
+        .feature-value {
+            width: 80px;
+            text-align: left;
+            padding-left: 10px;
+        }
+        
+        .feature-importance-plot {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .feature-contribution {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+
+        .feature-contribution-bar {
+            height: 25px;
+            background: linear-gradient(90deg, rgba(52, 152, 219, 0.2), rgba(52, 152, 219, 0.8));
+            border-radius: 6px;
+            margin-top: 5px;
+        }
+
+        .contribution-value {
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .explanation-section {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .explanation-title {
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+            color: white;
+        }
+
+        .explanation-card {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 15px 0;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .feature-explanation {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 15px;
+            margin: 10px 0;
+            transition: transform 0.2s;
+        }
+
+        .feature-explanation:hover {
+            transform: translateX(5px);
+        }
+
+        .overall-explanation {
+            font-size: 1.1rem;
+            line-height: 1.6;
+            padding: 20px;
+            background: rgba(52, 152, 219, 0.1);
+            border-radius: 12px;
+            margin: 20px 0;
+            border-left: 4px solid var(--accent-color);
+        }
+
+        .importance-plot {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .feature-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .route-info-card {
+            background: linear-gradient(135deg, rgba(52, 152, 219, 0.2), rgba(44, 62, 80, 0.2));
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 15px;
+        }
+        
+        .route-info-card .detail-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .route-info-card .detail-item:last-child {
+            border-bottom: none;
+        }
+        
+        .route-info-card .detail-item i {
+            color: var(--accent-color);
+        }
+        
+        .route-info-card .detail-item .value {
+            font-weight: 600;
+            color: white;
+            font-size: 1.1rem;
+        }
+
+        .weather-info-card {
+            background: linear-gradient(135deg, rgba(52, 152, 219, 0.2), rgba(44, 62, 80, 0.2));
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 15px;
+        }
+
+        .weather-info-card .weather-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .weather-info-card .weather-header h4 {
+            margin: 0;
+            color: var(--accent-color);
+            font-size: 1.2rem;
+        }
+
+        .weather-info-card .update-time {
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .weather-info-card .weather-details {
+            margin-bottom: 15px;
+        }
+
+        .weather-info-card .detail-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .weather-info-card .detail-item:last-child {
+            border-bottom: none;
+        }
+
+        .weather-info-card .detail-item i {
+            color: var(--accent-color);
+        }
+
+        .weather-info-card .detail-item .value {
+            font-weight: 600;
+            color: white;
+        }
+
+        .weather-info-card .weather-advice {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 12px;
+            margin-top: 15px;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        .weather-info-card .weather-advice i {
+            color: var(--warning-color);
+        }
+
+        /* Feature Analysis Styles */
+        .feature-analysis-container {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .overall-explanation {
+            background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
+            border-radius: 10px;
+            padding: 20px;
+            color: #2c3e50;
+        }
+
+        .explanation-text {
+            font-size: 1.1rem;
+            line-height: 1.6;
+            margin: 0;
+        }
+
+        .feature-details {
+            background: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%);
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            margin-top: 20px;
+        }
+
+        .explanation-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .explanation-card {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            border-left: 4px solid #3498db;
+            transition: transform 0.2s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .explanation-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .explanation-card p {
+            margin: 0;
+            line-height: 1.5;
+            color: #2c3e50;
+        }
+
+        /* Section Headers */
+        .feature-analysis-container h4 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+
+        .feature-analysis-container h5 {
+            color: #34495e;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            font-weight: 600;
+        }
+
+        .feature-analysis-container h5 i {
+            color: #3498db;
+            margin-right: 8px;
+        }
+
+        /* Route Details Styles */
+        .route-info-card {
+            background: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%);
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .route-detail-item {
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+        }
+
+        .route-detail-item:last-child {
+            border-bottom: none;
+        }
+
+        .route-detail-item i {
+            color: #3498db;
+            width: 24px;
+            text-align: center;
+        }
+
+        .route-detail-item strong {
+            margin-right: 8px;
+            color: #2c3e50;
+        }
+
+        /* LIME Visualization Styles */
+        .visualization {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .visualization h5 {
+            color: #34495e;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+
+        .visualization h5 i {
+            color: #3498db;
+            margin-right: 8px;
+        }
+
+        .visualization-container {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .visualization-container img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Summary Section Styles */
+        .overall-explanation {
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            margin-bottom: 25px;
+        }
+
+        .explanation-content {
+            padding: 10px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.7);
+        }
+
+        .explanation-text {
+            font-size: 1.1rem;
+            line-height: 1.6;
+            color: #2c3e50;
+            margin-bottom: 0;
+        }
+
+        .weather-advice {
+            padding: 10px 15px;
+            background: rgba(52, 152, 219, 0.1);
+            border-radius: 6px;
+            color: #2980b9;
+            font-size: 0.95rem;
+        }
+
+        .weather-advice i {
+            color: #3498db;
+        }
+        
+        .custom-marker {
+            text-align: center;
+        }
+        .custom-marker i {
+            font-size: 24px;
+        }
+        .source-marker i {
+            color: #27ae60;  /* Green for source */
+        }
+        .dest-marker i {
+            color: #e74c3c;  /* Red for destination */
+        }
+        .marker-label {
+            font-size: 12px;
+            font-weight: bold;
+            margin-top: -5px;
+            text-shadow: 1px 1px 2px white;
+        }
+        .arrow-marker {
+            text-align: center;
+        }
+        .arrow-marker i {
+            font-size: 16px;
+            color: #3498db;
+            text-shadow: 1px 1px 2px white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container dashboard-container">
+        <div class="analyzer-dashboard">
+            <h1 class="text-center mb-4">Safe Route Planner</h1>
+            
+            <!-- Route Input Form -->
+            <div class="route-form">
+                <form id="routeForm">
+                    <div class="row">
+                        <div class="col-md-5 mb-3">
+                            <div class="position-relative">
+                                <i class="fas fa-map-marker-alt input-icon"></i>
+                                <input type="text" class="form-control" id="source" name="source" placeholder="Starting Point" required>
+                            </div>
+                        </div>
+                        <div class="col-md-5 mb-3">
+                            <div class="position-relative">
+                                <i class="fas fa-map-marker input-icon"></i>
+                                <input type="text" class="form-control" id="destination" name="destination" placeholder="Destination" required>
+                            </div>
+                        </div>
+                        <div class="col-md-2 mb-3">
+                            <button type="submit" class="submit-btn">
+                                <i class="fas fa-search"></i> Analyze
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Results Section -->
+            <div id="results" style="display: none;">
+                <!-- Map and Safety Score Row -->
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="map-container">
+                            <div id="map" style="height: 100%;"></div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                       <!-- <div class="result-card">
+                            <h3 class="text-center mb-3">Safety Score</h3>
+                            <div id="safetyScore" class="safety-score"></div>
+                        </div>  -->
+                    </div>
+                </div>
+
+                <!-- Model Explanation Section -->
+                <div id="featureAnalysis"></div>
+
+                <!-- Weather and Route Details -->
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <div id="weatherDetails"></div>
+                    </div>
+                    <div class="col-md-6">
+                        <div id="routeDetails"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        $(document).ready(function() {
+            // Initialize map
+            const map = L.map('map').setView([20.5937, 78.9629], 5);  // Center on India
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: 'OpenStreetMap contributors'
+            }).addTo(map);
+
+            let sourceMarker, destMarker, routeLine, arrowHeads;
+
+            function updateMapRoute(coordinates) {
+                // Clear existing markers, route, and arrows
+                if (sourceMarker) map.removeLayer(sourceMarker);
+                if (destMarker) map.removeLayer(destMarker);
+                if (routeLine) map.removeLayer(routeLine);
+                if (arrowHeads) {
+                    arrowHeads.forEach(arrow => map.removeLayer(arrow));
+                }
+                arrowHeads = [];
+
+                // Add source marker with custom icon
+                sourceMarker = L.marker(coordinates[0], {
+                    icon: L.divIcon({
+                        className: 'custom-marker source-marker',
+                        html: '<i class="fas fa-map-marker-alt"></i><div class="marker-label">Start</div>',
+                        iconSize: [40, 50],
+                        iconAnchor: [20, 50],
+                        popupAnchor: [0, -45]
+                    })
+                }).addTo(map);
+
+                // Add destination marker with custom icon
+                destMarker = L.marker(coordinates[coordinates.length - 1], {
+                    icon: L.divIcon({
+                        className: 'custom-marker dest-marker',
+                        html: '<i class="fas fa-map-marker-alt"></i><div class="marker-label">End</div>',
+                        iconSize: [40, 50],
+                        iconAnchor: [20, 50],
+                        popupAnchor: [0, -45]
+                    })
+                }).addTo(map);
+
+                // Draw route line with styling
+                routeLine = L.polyline(coordinates, {
+                    color: '#3498db',
+                    weight: 4,
+                    opacity: 0.8,
+                    lineJoin: 'round'
+                }).addTo(map);
+
+                // Add arrow markers along the route
+                const arrowInterval = Math.ceil(coordinates.length / 8); // Show 8 arrows along the route
+                for (let i = arrowInterval; i < coordinates.length - arrowInterval; i += arrowInterval) {
+                    const p1 = coordinates[i - 1];
+                    const p2 = coordinates[i + 1];
+                    
+                    // Calculate arrow rotation angle
+                    const angle = Math.atan2(p2[1] - p1[1], p2[0] - p1[0]) * 180 / Math.PI;
+                    
+                    // Create arrow marker
+                    const arrow = L.marker(coordinates[i], {
+                        icon: L.divIcon({
+                            className: 'arrow-marker',
+                            html: '<i class="fas fa-chevron-right"></i>',
+                            iconSize: [20, 20],
+                            iconAnchor: [10, 10]
+                        })
+                    }).addTo(map);
+                    
+                    // Rotate arrow icon
+                    const arrowIcon = arrow.getElement().querySelector('i');
+                    if (arrowIcon) {
+                        arrowIcon.style.transform = `rotate(${angle}deg)`;
+                    }
+                    
+                    arrowHeads.push(arrow);
+                }
+
+                // Fit map to show entire route with padding
+                map.fitBounds(routeLine.getBounds(), {
+                    padding: [50, 50],
+                    maxZoom: 15
+                });
+            }
+
+            $('#routeForm').on('submit', function(e) {
+                e.preventDefault();
+                const source = $('#source').val();
+                const destination = $('#destination').val();
+
+                // Show loading state
+                $('#analyzeBtn').prop('disabled', true).html(
+                    '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Analyzing...'
+                );
+
+                console.log('Sending request:', { source, destination });  // Debug log
+
+                // Make the AJAX request
+                $.ajax({
+                    url: '/analyze_route',
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({
+                        source: source,
+                        destination: destination
+                    }),
+                    success: function(response) {
+                        console.log('Response:', response);  // Debug log
+                        
+                        // Reset button state
+                        $('#analyzeBtn').prop('disabled', false).html('Analyze Route');
+                        
+                        // Show results section
+                        $('#results').show();
+
+                        // Update safety score
+                        const score = response.safety_score;
+                        const scoreColor = getSafetyScoreColor(score);
+                        $('#safetyScore').text(Math.round(score))
+                                        .css('background-color', scoreColor);
+                        
+                        // Update feature analysis display
+                        if (response.feature_analysis) {
+                            console.log('Feature analysis:', response.feature_analysis);
+                            
+                            // Create container for feature analysis
+                            const analysisHtml = `
+                                <div class="feature-analysis-container">
+                                    <h4 class="mb-3">Route Safety Analysis</h4>
+                                    
+                                    <!-- Overall Explanation -->
+                                    <div class="overall-explanation mb-4">
+                                        <h5>
+                                            <i class="fas fa-info-circle me-2"></i>Route Safety Summary
+                                            <small class="text-muted ms-2">
+                                                (Updated: ${new Date().toLocaleTimeString()})
+                                            </small>
+                                        </h5>
+                                        <div class="explanation-content">
+                                            <p class="explanation-text">
+                                                ${response.feature_analysis.overall_explanation || 'Analysis not available'}
+                                            </p>
+                                            ${response.weather_advice ? `
+                                                <div class="weather-advice mt-3">
+                                                    <i class="fas fa-cloud me-2"></i>
+                                                    <span>${response.weather_advice}</span>
+                                                </div>
+                                            ` : ''}
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- LIME Visualization -->
+                                    ${response.feature_analysis.explanation_plot ? `
+                                        <div class="visualization mb-4">
+                                            <h5><i class="fas fa-chart-line me-2"></i>Feature Importance Analysis</h5>
+                                            <div class="visualization-container">
+                                                <img src="data:image/png;base64,${response.feature_analysis.explanation_plot}" 
+                                                     class="img-fluid" alt="Feature importance visualization">
+                                            </div>
+                                        </div>
+                                    ` : ''}
+                                    
+                                    <!-- Detailed Explanations -->
+                                    <div class="feature-details">
+                                        <h5><i class="fas fa-list me-2"></i>Detailed Analysis</h5>
+                                        <div class="explanation-cards">
+                                            ${response.feature_analysis.feature_explanations.map(explanation => `
+                                                <div class="explanation-card">
+                                                    <p>${explanation}</p>
+                                                </div>
+                                            `).join('')}
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                            
+                            $('#featureAnalysis').html(analysisHtml).show();
+                        } else {
+                            console.error('Missing feature analysis data');
+                            $('#featureAnalysis').html('<p class="text-muted">Feature analysis not available</p>');
+                        }
+                        
+                        // Update map with route
+                        if (response.route_coords) {
+                            updateMapRoute(response.route_coords);
+                        }
+                        
+                        // Update weather details with real-time updates
+                        if (response.source_weather && response.dest_weather) {
+                            console.log('Source weather data:', response.source_weather);
+                            console.log('Destination weather data:', response.dest_weather);
+
+                            // Create container for both weather cards
+                            const weatherContainer = `
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h5 class="text-muted mb-2">Source Location Weather</h5>
+                                        <div id="sourceWeather"></div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h5 class="text-muted mb-2">Destination Location Weather</h5>
+                                        <div id="destWeather"></div>
+                                    </div>
+                                </div>
+                            `;
+                            $('#weatherDetails').html(weatherContainer).show();
+
+                            // Update both weather displays
+                            updateWeatherDisplay(response.source_weather, 'sourceWeather');
+                            updateWeatherDisplay(response.dest_weather, 'destWeather');
+                            
+                            // Start periodic updates for both locations
+                            if (response.source_coords && response.source_coords.length === 2) {
+                                startWeatherUpdates(response.source_coords[0], response.source_coords[1], 'source');
+                            }
+                            if (response.dest_coords && response.dest_coords.length === 2) {
+                                startWeatherUpdates(response.dest_coords[0], response.dest_coords[1], 'destination');
+                            }
+                        } else {
+                            console.error('Missing weather data:', { 
+                                source: response.source_weather, 
+                                destination: response.dest_weather 
+                            });
+                            $('#weatherDetails').html('<p class="text-muted">Weather information not available</p>');
+                        }
+                        
+                        // Update route details
+                        const routeDetailsHtml = `
+                            <div class="card route-info-card">
+                                <div class="card-body">
+                                    <div class="route-detail-item">
+                                        <i class="fas fa-road me-2"></i>
+                                        <strong>Distance:</strong> ${response.distance.toFixed(1)} km
+                                    </div>
+                                    <div class="route-detail-item">
+                                        <i class="fas fa-clock me-2"></i>
+                                        <strong>Duration:</strong> ${response.duration} minutes
+                                    </div>
+                                    <div class="route-detail-item">
+                                        <i class="fas fa-map-marker-alt me-2"></i>
+                                        <strong>From:</strong> ${$('#source').val()}
+                                    </div>
+                                    <div class="route-detail-item">
+                                        <i class="fas fa-map-marker me-2"></i>
+                                        <strong>To:</strong> ${$('#destination').val()}
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        $('#routeDetails').html(routeDetailsHtml);
+                    },
+                    error: function(xhr, status, error) {
+                        // Reset button state
+                        $('#analyzeBtn').prop('disabled', false).html('Analyze Route');
+                        
+                        // Show error message
+                        console.error('Error:', error);  // Debug log
+                        alert('Error analyzing route: ' + (xhr.responseJSON?.error || error));
+                    }
+                });
+            });
+
+            function getSafetyScoreColor(score) {
+                if (score >= 80) return '#28a745';  // Safe - Green
+                if (score >= 60) return '#ffc107';  // Moderate - Yellow
+                if (score >= 40) return '#fd7e14';  // Caution - Orange
+                return '#dc3545';                   // Dangerous - Red
+            }
+
+            function updateWeatherDisplay(weatherData, targetId) {
+                if (!weatherData || typeof weatherData !== 'object') {
+                    console.error('Invalid weather data:', weatherData);
+                    $(`#${targetId}`).html('<p class="text-muted">Weather information not available</p>');
+                    return;
+                }
+
+                // Validate required weather data fields
+                const requiredFields = ['temperature', 'humidity', 'wind_speed', 'weather_condition'];
+                for (const field of requiredFields) {
+                    if (!(field in weatherData)) {
+                        console.error(`Missing required weather field: ${field}`);
+                        $(`#${targetId}`).html('<p class="text-muted">Incomplete weather information</p>');
+                        return;
+                    }
+                }
+
+                console.log(`Displaying weather data for ${targetId}:`, weatherData);
+
+                // Get weather icon based on condition
+                const getWeatherIcon = (condition) => {
+                    const icons = {
+                        'Clear': 'sun',
+                        'Clouds': 'cloud',
+                        'Rain': 'cloud-rain',
+                        'Snow': 'snowflake',
+                        'Thunderstorm': 'bolt',
+                        'Drizzle': 'cloud-rain',
+                        'Mist': 'smog',
+                        'Smoke': 'smog',
+                        'Haze': 'smog',
+                        'Dust': 'smog',
+                        'Fog': 'smog',
+                        'Sand': 'smog',
+                        'Ash': 'smog',
+                        'Squall': 'wind',
+                        'Tornado': 'tornado'
+                    };
+                    return icons[condition] || 'cloud';
+                };
+
+                const weatherIcon = getWeatherIcon(weatherData.weather_condition);
+                const weatherHtml = `
+                    <div class="weather-info-card">
+                        <div class="weather-header">
+                            <h4>
+                                <i class="fas fa-${weatherIcon} me-2"></i>
+                                Current Weather
+                                <small class="condition-text">(${weatherData.weather_condition})</small>
+                            </h4>
+                            <span class="update-time">Updated: ${new Date().toLocaleTimeString()}</span>
+                        </div>
+                        <div class="weather-details">
+                            <div class="detail-item">
+                                <span><i class="fas fa-thermometer-half me-2"></i>Temperature:</span>
+                                <span class="value">${weatherData.temperature}°C</span>
+                            </div>
+                            <div class="detail-item">
+                                <span><i class="fas fa-tint me-2"></i>Humidity:</span>
+                                <span class="value">${weatherData.humidity}%</span>
+                            </div>
+                            <div class="detail-item">
+                                <span><i class="fas fa-wind me-2"></i>Wind Speed:</span>
+                                <span class="value">${weatherData.wind_speed} m/s</span>
+                            </div>
+                            <div class="detail-item">
+                                <span><i class="fas fa-${weatherIcon} me-2"></i>Condition:</span>
+                                <span class="value">${weatherData.weather_condition}</span>
+                            </div>
+                        </div>
+                        ${weatherData.weather_advice ? `
+                            <div class="weather-advice">
+                                <i class="fas fa-info-circle me-2"></i>${weatherData.weather_advice}
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+                $(`#${targetId}`).html(weatherHtml);
+            }
+
+            function startWeatherUpdates(lat, lon, locationType) {
+                if (!lat || !lon) {
+                    console.error('Invalid coordinates for weather updates:', { lat, lon });
+                    return;
+                }
+
+                console.log(`Starting weather updates for ${locationType}:`, { lat, lon });
+                
+                // Update weather every 5 minutes
+                setInterval(() => {
+                    $.ajax({
+                        url: '/get_weather_update',
+                        method: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify({ lat, lon, type: locationType }),
+                        success: function(response) {
+                            console.log(`Weather update received for ${locationType}:`, response);
+                            if (response && Object.keys(response).length > 0) {
+                                const targetId = locationType === 'source' ? 'sourceWeather' : 'destWeather';
+                                updateWeatherDisplay(response, targetId);
+                            } else {
+                                console.error('Empty weather update response');
+                            }
+                        },
+                        error: function(xhr, status, error) {
+                            console.error(`Error updating ${locationType} weather:`, error);
+                        }
+                    });
+                }, 5 * 60 * 1000); // 5 minutes interval
+            }
+
+            function startRouteUpdates(sourceCoords, destCoords, distance, duration) {
+                // Store route parameters globally
+                window.currentRoute = {
+                    source_coords: sourceCoords,
+                    dest_coords: destCoords,
+                    distance: distance,
+                    duration: duration
+                };
+                
+                // Initial update
+                updateRouteSafety();
+                
+                // Set up periodic updates
+                if (window.routeUpdateInterval) {
+                    clearInterval(window.routeUpdateInterval);
+                }
+                window.routeUpdateInterval = setInterval(updateRouteSafety, 300000); // Update every 5 minutes
+            }
+            
+            function updateRouteSafety() {
+                if (!window.currentRoute) return;
+                
+                $.ajax({
+                    url: '/get_route_update',
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(window.currentRoute),
+                    success: function(response) {
+                        console.log('Route update:', response);
+                        
+                        if (response.error) {
+                            console.error('Error updating route:', response.error);
+                            return;
+                        }
+                        
+                        // Update safety score
+                        const score = response.safety_score;
+                        const scoreColor = getSafetyScoreColor(score);
+                        $('#safetyScore').text(Math.round(score))
+                                        .css('background-color', scoreColor);
+                        
+                        // Update feature analysis
+                        if (response.feature_analysis) {
+                            const analysisHtml = `
+                                <div class="feature-analysis-container">
+                                    <h4 class="mb-3">Route Safety Analysis</h4>
+                                    
+                                    <!-- Overall Explanation -->
+                                    <div class="overall-explanation mb-4">
+                                        <h5>
+                                            <i class="fas fa-info-circle me-2"></i>Route Safety Summary
+                                            <small class="text-muted ms-2">
+                                                (Updated: ${new Date().toLocaleTimeString()})
+                                            </small>
+                                        </h5>
+                                        <div class="explanation-content">
+                                            <p class="explanation-text">${response.feature_analysis.overall_explanation}</p>
+                                            ${response.weather_advice ? `
+                                                <div class="weather-advice mt-3">
+                                                    <i class="fas fa-cloud me-2"></i>
+                                                    <span>${response.weather_advice}</span>
+                                                </div>
+                                            ` : ''}
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- LIME Visualization -->
+                                    ${response.feature_analysis.explanation_plot ? `
+                                        <div class="visualization mb-4">
+                                            <h5><i class="fas fa-chart-line me-2"></i>Feature Importance Analysis</h5>
+                                            <div class="visualization-container">
+                                                <img src="data:image/png;base64,${response.feature_analysis.explanation_plot}" 
+                                                     class="img-fluid" alt="Feature importance visualization">
+                                            </div>
+                                        </div>
+                                    ` : ''}
+                                    
+                                    <!-- Detailed Explanations -->
+                                    <div class="feature-details">
+                                        <h5><i class="fas fa-list me-2"></i>Detailed Analysis</h5>
+                                        <div class="explanation-cards">
+                                            ${response.feature_analysis.feature_explanations.map(explanation => `
+                                                <div class="explanation-card">
+                                                    <p>${explanation}</p>
+                                                </div>
+                                            `).join('')}
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                            
+                            $('#featureAnalysis').html(analysisHtml).show();
+                        }
+                        
+                        // Update weather displays
+                        updateWeatherDisplay(response.source_weather, 'sourceWeather');
+                        updateWeatherDisplay(response.dest_weather, 'destWeather');
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('Error updating route safety:', error);
+                    }
+                });
+            }
+
+            // Start periodic updates for route and weather
+            startRouteUpdates(
+                response.source_coords,
+                response.dest_coords,
+                response.distance,
+                response.duration
+            );
+        });
+    </script>
+</body>
+</html>

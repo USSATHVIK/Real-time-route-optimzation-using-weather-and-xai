@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RouteX AI - Weather-Based Route Optimization</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --accent-color: #3498db;
+            --warning-color: #e67e22;
+            --danger-color: #e74c3c;
+            --success-color: #2ecc71;
+        }
+        
+        body {
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            min-height: 100vh;
+            color: white;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+
+        .dashboard-container {
+            padding: 2rem;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+        }
+
+        .weather-dashboard {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 2.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .status-card {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            transition: transform 0.3s ease;
+        }
+
+        .status-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .feature-button {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: none;
+            padding: 1.2rem;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+            margin: 8px 0;
+            width: 100%;
+            text-align: left;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateX(10px);
+            color: white;
+        }
+
+        .feature-button i {
+            margin-right: 10px;
+            font-size: 1.2em;
+        }
+
+        .weather-icon {
+            font-size: 2.5em;
+            margin-bottom: 1rem;
+            color: #f1c40f;
+        }
+
+        .live-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background-color: var(--success-color);
+            border-radius: 50%;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .status-badge {
+            position: absolute;
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255, 255, 255, 0.2);
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.8em;
+        }
+
+        .system-status {
+            font-size: 0.9em;
+            opacity: 0.8;
+            margin-top: 2rem;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container dashboard-container">
+        <div class="row justify-content-center w-100">
+            <div class="col-lg-10">
+                <div class="weather-dashboard">
+                    <div class="text-center mb-4">
+                        <h1 class="display-4">RouteX AI</h1>
+                        <p class="lead mb-0">
+                            <span class="live-indicator"></span>
+                            Intelligent Route Optimization System
+                        </p>
+                    </div>
+
+                    <div class="status-card text-center">
+                        <i class="fas fa-cloud-sun-rain weather-icon"></i>
+                        <h3>Weather-Aware Navigation</h3>
+                        <p class="mb-0">
+                            Our advanced AI analyzes real-time weather conditions to provide 
+                            the safest and most efficient routes for your journey.
+                        </p>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <a href="{{ url_for('get_route') }}" class="btn feature-button">
+                                <i class="fas fa-map-marked-alt"></i>
+                                Plan Route
+                                <span class="status-badge">Real-time</span>
+                            </a>
+                        </div>
+                        <div class="col-md-6">
+                            <a href="{{ url_for('safety_check') }}" class="btn feature-button">
+                                <i class="fas fa-shield-alt"></i>
+                                Safety Check
+                                <span class="status-badge">Active</span>
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <a href="{{ url_for('navigate') }}" class="btn feature-button">
+                                <i class="fas fa-route"></i>
+                                Live Navigation
+                                <span class="status-badge">Beta</span>
+                            </a>
+                        </div>
+                        <div class="col-md-6">
+                            <a href="{{ url_for('feedback') }}" class="btn feature-button">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                Road Feedback
+                                <span class="status-badge">Active</span>
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-12">
+                            <a href="{{ url_for('pothole_detection') }}" class="btn feature-button">
+                                <i class="fas fa-camera"></i>
+                                Pothole Detection
+                                <span class="status-badge">New</span>
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="system-status">
+                        <a href="{{ url_for('view_feedback') }}" class="btn btn-outline-light btn-sm">
+                            <i class="fas fa-clipboard-list me-2"></i>
+                            View All Road Reports
+                        </a>
+                        <p class="mt-3">
+                            <i class="fas fa-server me-2"></i>
+                            All systems operational | Weather data: Updated
+                            <span id="lastUpdate"></span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Update the last update time
+        function updateLastUpdateTime() {
+            const now = new Date();
+            document.getElementById('lastUpdate').textContent = now.toLocaleTimeString();
+        }
+
+        // Update time every minute
+        updateLastUpdateTime();
+        setInterval(updateLastUpdateTime, 60000);
+    </script>
+</body>
+</html>
